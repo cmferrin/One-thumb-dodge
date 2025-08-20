@@ -94,16 +94,6 @@
   }, { passive: true });
   canvas.addEventListener('touchend', () => { dragging = false; }, { passive: true });
 
-  // Tilt controls
-  if (state.tiltControls) {
-  const sensitivity = 0.6;
-  state.player.x += tiltX * sensitivity;
-  state.player.x = Math.max(
-    state.player.r,
-    Math.min(canvas.clientWidth - state.player.r, state.player.x)
-  );
-}
-
   // SFX
   let audioCtx = null;
   function beep(freq=500,len=0.07,type='sine',vol=0.04) {
@@ -218,6 +208,15 @@
     if(paused)return;
     if(!lastTS)lastTS=ts;
     const dt=Math.min(0.033,(ts-lastTS)/1000); lastTS=ts;
+    // Apply tilt every frame
+if (state.tiltControls) {
+  const sensitivity = 0.6; // tweak if you want faster/slower
+  state.player.x += tiltX * sensitivity;
+  state.player.x = Math.max(
+    state.player.r,
+    Math.min(canvas.clientWidth - state.player.r, state.player.x)
+  );
+}
 
     state.t+=dt; score+=Math.floor(dt*100); scoreEl.textContent=score;
     state.difficulty+=dt*0.02; state.speed=140+state.difficulty*180;
