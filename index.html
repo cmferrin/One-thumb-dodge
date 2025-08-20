@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <title>One‑Thumb Dodge</title>
+  <title>One-Thumb Dodge</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -18,11 +18,13 @@
       <div id="score">0</div>
       <button id="pauseBtn" aria-label="Pause">⏸︎</button>
     </div>
+
     <canvas id="game"></canvas>
+
     <div id="overlay" class="show">
       <div class="card">
-        <h1>One‑Thumb Dodge</h1>
-        <p>Dodge the falling blocks. Drag your thumb to move. Collect coins for bonus points.</p>
+        <h1>One-Thumb Dodge</h1>
+        <p>Dodge the falling blocks. Drag your thumb to move. Collect diamonds to use in the shop.</p>
         <div class="stats">
           <div>Best: <span id="bestScore">0</span></div>
           <div>Games: <span id="gamesPlayed">0</span></div>
@@ -31,7 +33,7 @@
           <button id="playBtn">Play</button>
           <button id="shopBtn" class="secondary">Shop</button>
           <button id="settingsBtn" class="secondary">Settings</button>
-</div>
+        </div>
       </div>
     </div>
 
@@ -44,27 +46,25 @@
         </label>
         <label class="toggle">
           <input type="checkbox" id="leftHandToggle">
-          <span>Left‑hand HUD</span>
+          <span>Left-hand HUD</span>
         </label>
         <button id="closeSettings">Close</button>
+      </div>
+    </div>
+
+    <!-- Shop sheet -->
+    <div id="shop" class="sheet">
+      <div class="sheet-inner">
+        <h3>Shop</h3>
+        <p>Diamonds: <strong>💎 <span id="shopDiamondCount">0</span></strong></p>
+        <div id="shopList" class="shop-list"></div>
+        <button id="closeShop" class="secondary">Close</button>
       </div>
     </div>
 
     <div id="toast"></div>
   </div>
 
-  <div id="shop" class="sheet">
-  <div class="sheet-inner">
-    <h2>Shop</h2>
-    <div class="shop-items">
-      <div class="shop-item" data-item="skin1">Skin 1 - 100💰</div>
-      <div class="shop-item" data-item="skin2">Skin 2 - 250💰</div>
-      <div class="shop-item" data-item="skin3">Skin 3 - 500💰</div>
-    </div>
-    <button id="closeShopBtn" class="secondary">Close</button>
-  </div>
-</div>
-  
   <script src="game.js"></script>
 </body>
 </html>
