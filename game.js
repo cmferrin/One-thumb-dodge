@@ -12,19 +12,6 @@
   const sfxToggle = document.getElementById('sfxToggle');
   const leftHandToggle = document.getElementById('leftHandToggle');
   const diffBtns = document.querySelectorAll('.diffBtn');
-  function setActiveDiffButton() {
-    diffBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.mode === difficultyMode));
-  }
-  diffBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      difficultyMode = btn.dataset.mode;
-      CFG = DIFFS[difficultyMode];
-      localStorage.setItem('otd_mode', difficultyMode);
-      setActiveDiffButton();
-      showToast(`Difficulty: ${difficultyMode}`);
-    });
-  });
-  setActiveDiffButton();
   const toast = document.getElementById('toast');
 
   // --- HUD + Shop elements ---
@@ -59,6 +46,19 @@
   };
   let difficultyMode = localStorage.getItem('otd_mode') || 'medium';
   let CFG = DIFFS[difficultyMode];
+  function setActiveDiffButton() {
+    diffBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.mode === difficultyMode));
+  }
+  diffBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      difficultyMode = btn.dataset.mode;
+      CFG = DIFFS[difficultyMode];
+      localStorage.setItem('otd_mode', difficultyMode);
+      setActiveDiffButton();
+      showToast(`Difficulty: ${difficultyMode}`);
+    });
+  });
+  setActiveDiffButton();
 
   // PWA SW
   if ('serviceWorker' in navigator) {
