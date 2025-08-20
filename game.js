@@ -95,14 +95,14 @@
   canvas.addEventListener('touchend', () => { dragging = false; }, { passive: true });
 
   // Tilt controls
-  window.addEventListener('deviceorientation', (e) => {
-    if (!state.tiltControls || !running) return;
-    const gamma = e.gamma; // left/right tilt
-    if (gamma != null) {
-      state.player.x += gamma * 0.5;
-      state.player.x = Math.max(state.player.r, Math.min(canvas.clientWidth - state.player.r, state.player.x));
-    }
-  });
+  if (state.tiltControls) {
+  const sensitivity = 0.6;
+  state.player.x += tiltX * sensitivity;
+  state.player.x = Math.max(
+    state.player.r,
+    Math.min(canvas.clientWidth - state.player.r, state.player.x)
+  );
+}
 
   // SFX
   let audioCtx = null;
@@ -247,6 +247,32 @@
     draw();
   }
 
+  // ---- Tilt controls (with iOS permission + smoothing) ----
+let tiltX = 0; // smoothed gamma
+
+async function ensureMotionPermission() {
+  try {
+    if (typeof DeviceMotionEvent !== 'undefined' &&
+        typeof DeviceMotionEvent.requestPermission === 'function') {
+      const res = await DeviceMotionEvent.requestPermission();
+      return res === 'granted';
+    }
+    if (typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof DeviceOrientationEvent.requestPermission === 'function') {
+      const res = await DeviceOrientationEvent.requestPermission();
+      return res === 'granted';
+    }
+  } catch (_) {}
+  return true;
+}
+
+window.addEventListener('deviceorientation', (e) => {
+  if (!state.tiltControls || !running) return;
+  if (typeof e.gamma === 'number') {
+    tiltX = 0.9 * tiltX + 0.1 * e.gamma;
+  }
+}, { passive: true });
+
   playBtn.addEventListener('click',()=>{ startGame(); lastTS=0; requestAnimationFrame(loop); });
   pauseBtn.addEventListener('click',()=>{ if(!running)return; paused=!paused; pauseBtn.textContent=paused?'▶︎':'⏸︎'; if(!paused){ lastTS=0; requestAnimationFrame(loop);} });
 
@@ -270,7 +296,22 @@
   state.rainbowBlocks=rainbowInput.checked;
   state.tiltControls=tiltInput.checked;
   rainbowInput.addEventListener('change',()=>{ state.rainbowBlocks=rainbowInput.checked; localStorage.setItem('otd_rainbow', rainbowInput.checked?'1':'0'); });
-  tiltInput.addEventListener('change',()=>{ state.tiltControls=tiltInput.checked; localStorage.setItem('otd_tilt', tiltInput.checked?'1':'0'); });
+  tiltInput.addEventListener('change', async () => {
+  if (tiltInput.checked) {
+    const ok = await ensureMotionPermission();
+    if (!ok) {
+      tiltInput.checked = false;
+      state.tiltControls = false;
+      localStorage.setItem('otd_tilt', '0');
+      showToast('Motion access blocked. Enable in Settings → Safari → Motion & Orientation Access.');
+      return;
+    }
+    state.tiltControls = true;
+  } else {
+    state.tiltControls = false;
+  }
+  localStorage.setItem('otd_tilt', tiltInput.checked ? '1' : '0');
+});
 
   draw();
 })();
