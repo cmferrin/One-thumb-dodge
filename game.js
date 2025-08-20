@@ -11,6 +11,20 @@
   const closeSettings = document.getElementById('closeSettings');
   const sfxToggle = document.getElementById('sfxToggle');
   const leftHandToggle = document.getElementById('leftHandToggle');
+  const diffBtns = document.querySelectorAll('.diffBtn');
+  function setActiveDiffButton() {
+    diffBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.mode === difficultyMode));
+  }
+  diffBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      difficultyMode = btn.dataset.mode;
+      CFG = DIFFS[difficultyMode];
+      localStorage.setItem('otd_mode', difficultyMode);
+      setActiveDiffButton();
+      showToast(`Difficulty: ${difficultyMode}`);
+    });
+  });
+  setActiveDiffButton();
   const toast = document.getElementById('toast');
 
   // --- HUD + Shop elements ---
@@ -36,6 +50,15 @@
     { id: 'green',   name: 'Green Ball',   cost: 100, color: '#4cff62' },
     { id: 'gold',    name: 'Gold Ball',    cost: 200, color: '#ffd94c' }
   ];
+  // ---- Difficulty presets ----
+  const DIFFS = {
+    easy:   { speedBase:110, speedRamp:140, spawnBase:1.00, spawnMin:0.28, spawnSlope:0.28, diamondBase:3.2 },
+    medium: { speedBase:140, speedRamp:180, spawnBase:0.80, spawnMin:0.22, spawnSlope:0.35, diamondBase:3.0 },
+    hard:   { speedBase:170, speedRamp:240, spawnBase:0.70, spawnMin:0.18, spawnSlope:0.42, diamondBase:2.6 }
+  
+  };
+  let difficultyMode = localStorage.getItem('otd_mode') || 'medium';
+  let CFG = DIFFS[difficultyMode];
 
   // PWA SW
   if ('serviceWorker' in navigator) {
@@ -265,11 +288,20 @@
     }
 
     state.t+=dt; score+=Math.floor(dt*100); scoreEl.textContent=score;
-    state.difficulty+=dt*0.02; state.speed=140+state.difficulty*180;
+    state.difficulty += dt * 0.02;
+    state.speed = CFG.speedBase + state.difficulty * CFG.speedRamp;
 
-    state.spawnTimer-=dt; state.diamondTimer-=dt;
-    if(state.spawnTimer<=0){ state.spawnTimer=Math.max(0.22,0.8-state.difficulty*0.35); spawnBlock(); }
-    if(state.diamondTimer<=0){ state.diamondTimer=3+Math.random()*2; spawnDiamond(); }
+    if (state.spawnTimer <= 0) {
+      state.spawnTimer = Math.max(
+        CFG.spawnMin, 
+        CFG.spawnBase - state.difficulty * CFG.spawnSlope
+      );
+      spawnBlock();
+    }
+    if (state.diamondTimer <= 0) {
+      state.diamondTimer = CFG.diamondBase + Math.random() * 2;
+      spawnDiamond();
+    }
 
     for(const b of state.blocks)b.y+=b.vy*dt;
     for(const d of state.diamondsArr)d.y+=d.vy*dt;
@@ -400,3 +432,4 @@
   updateDiamondsUI();
   draw();
 })();
+
