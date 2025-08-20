@@ -290,6 +290,8 @@
     state.t+=dt; score+=Math.floor(dt*100); scoreEl.textContent=score;
     state.difficulty += dt * 0.02;
     state.speed = CFG.speedBase + state.difficulty * CFG.speedRamp;
+    state.spawnTimer -= dt;
+    state.diamondTimer -= dt;
 
     if (state.spawnTimer <= 0) {
       state.spawnTimer = Math.max(
