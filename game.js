@@ -13,24 +13,37 @@
   const leftHandToggle = document.getElementById('leftHandToggle');
   const toast = document.getElementById('toast');
 
-  // NEW: diamonds + shop
+  // --- HUD + Shop elements ---
+  const diamondHudEl = document.getElementById('diamondCount');
+  const shopBtn = document.getElementById('shopBtn');
+  const shopSheet = document.getElementById('shop');
+  const closeShop = document.getElementById('closeShop');
+  const shopList = document.getElementById('shopList');
+  const shopDiamondCount = document.getElementById('shopDiamondCount');
+
+  // --- Diamonds + skins state ---
   let diamonds = Number(localStorage.getItem('otd_diamonds') || '0');
   let skins = JSON.parse(localStorage.getItem('otd_skins') || '{"default":true}');
   let selectedSkin = localStorage.getItem('otd_selectedSkin') || 'default';
+  if (!skins || typeof skins !== 'object') skins = { default: true };
+  if (!skins.default) skins.default = true;
+  if (!selectedSkin) selectedSkin = 'default';
 
-  // Shop items
+  // Shop catalog
   const shopItems = [
-    { id: 'default', name: 'Default Blue', cost: 0, color: '#7cc8ff' },
-    { id: 'red', name: 'Red Ball', cost: 10, color: '#ff4c4c' },
-    { id: 'green', name: 'Green Ball', cost: 10, color: '#4cff62' },
-    { id: 'gold', name: 'Gold Ball', cost: 20, color: '#ffd94c' }
+    { id: 'default', name: 'Default Blue', cost: 0,  color: '#7cc8ff' },
+    { id: 'red',     name: 'Red Ball',     cost: 10, color: '#ff4c4c' },
+    { id: 'green',   name: 'Green Ball',   cost: 10, color: '#4cff62' },
+    { id: 'gold',    name: 'Gold Ball',    cost: 20, color: '#ffd94c' }
   ];
 
+  // PWA SW
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
   }
 
-  function showToast(msg, ms = 1800) {
+  function showToast(msg, ms = 1400) {
+    if (!toast) return;
     toast.textContent = msg;
     toast.classList.add('show');
     setTimeout(() => toast.classList.remove('show'), ms);
@@ -67,11 +80,11 @@
     diamondTimer: 0,
     speed: 140,
     difficulty: 0,
-    rainbowBlocks: false,
-    tiltControls: false,
+    rainbowBlocks: localStorage.getItem('otd_rainbow') === '1',
+    tiltControls:  localStorage.getItem('otd_tilt') === '1',
   };
 
-  // Input: thumb drag
+  // -------- Input: thumb drag --------
   let dragging = false;
   let dragOffsetX = 0;
   function clientToCanvasX(clientX) {
@@ -94,7 +107,31 @@
   }, { passive: true });
   canvas.addEventListener('touchend', () => { dragging = false; }, { passive: true });
 
-  // SFX
+  // -------- Tilt controls (perm + smoothing) --------
+  let tiltX = 0;
+  async function ensureMotionPermission() {
+    try {
+      if (typeof DeviceMotionEvent !== 'undefined' &&
+          typeof DeviceMotionEvent.requestPermission === 'function') {
+        const res = await DeviceMotionEvent.requestPermission();
+        return res === 'granted';
+      }
+      if (typeof DeviceOrientationEvent !== 'undefined' &&
+          typeof DeviceOrientationEvent.requestPermission === 'function') {
+        const res = await DeviceOrientationEvent.requestPermission();
+        return res === 'granted';
+      }
+    } catch (_) {}
+    return true;
+  }
+  window.addEventListener('deviceorientation', (e) => {
+    if (!state.tiltControls || !running) return;
+    if (typeof e.gamma === 'number') {
+      tiltX = 0.9 * tiltX + 0.1 * e.gamma; // smooth
+    }
+  }, { passive: true });
+
+  // -------- SFX --------
   let audioCtx = null;
   function beep(freq=500,len=0.07,type='sine',vol=0.04) {
     if (!sfxToggle.checked) return;
@@ -108,9 +145,17 @@
       o.start(); setTimeout(()=>o.stop(), len*1000);
     } catch {}
   }
-  function playDiamond() { beep(880,0.1,'square',0.05); }
-  function playHit() { beep(220,0.12,'sawtooth',0.06); }
+  const playDiamond = () => beep(880,0.1,'square',0.05);
+  const playHit     = () => beep(220,0.12,'sawtooth',0.06);
 
+  // -------- Diamonds HUD helpers --------
+  function updateDiamondsUI() {
+    if (diamondHudEl) diamondHudEl.textContent = diamonds;
+    if (shopDiamondCount) shopDiamondCount.textContent = diamonds;
+    localStorage.setItem('otd_diamonds', String(diamonds));
+  }
+
+  // -------- Game lifecycle --------
   function resetGame() {
     score = 0;
     state.t = 0;
@@ -122,9 +167,11 @@
     state.difficulty = 0;
 
     const px = canvas.clientWidth / 2;
-    const py = canvas.clientHeight - 150; // raised 150px
+    const py = canvas.clientHeight - 150; // higher
     state.player.x = px;
     state.player.y = py;
+
+    updateDiamondsUI();
   }
 
   function startGame() {
@@ -137,9 +184,7 @@
     running = false;
     games += 1; localStorage.setItem('otd_games', games); gamesEl.textContent = games;
     if (score > best) {
-      best = score;
-      localStorage.setItem('otd_best', best);
-      bestEl.textContent = best;
+      best = score; localStorage.setItem('otd_best', best); bestEl.textContent = best;
       showToast('New Best!');
     } else showToast('Game Over');
     overlay.classList.add('show');
@@ -178,9 +223,9 @@
 
     // player
     const p=state.player;
-    let skin=shopItems.find(s=>s.id===selectedSkin);
+    const skin=shopItems.find(s=>s.id===selectedSkin) || shopItems[0];
     ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-    ctx.fillStyle=skin?skin.color:'#7cc8ff';
+    ctx.fillStyle=skin.color;
     ctx.fill();
 
     // blocks
@@ -208,15 +253,16 @@
     if(paused)return;
     if(!lastTS)lastTS=ts;
     const dt=Math.min(0.033,(ts-lastTS)/1000); lastTS=ts;
-    // Apply tilt every frame
-if (state.tiltControls) {
-  const sensitivity = 0.6; // tweak if you want faster/slower
-  state.player.x += tiltX * sensitivity;
-  state.player.x = Math.max(
-    state.player.r,
-    Math.min(canvas.clientWidth - state.player.r, state.player.x)
-  );
-}
+
+    // Apply tilt each frame
+    if (state.tiltControls) {
+      const sensitivity = 0.6;
+      state.player.x += tiltX * sensitivity;
+      state.player.x = Math.max(
+        state.player.r,
+        Math.min(canvas.clientWidth - state.player.r, state.player.x)
+      );
+    }
 
     state.t+=dt; score+=Math.floor(dt*100); scoreEl.textContent=score;
     state.difficulty+=dt*0.02; state.speed=140+state.difficulty*180;
@@ -233,7 +279,7 @@ if (state.tiltControls) {
       const d=state.diamondsArr[i];
       if(Math.hypot(d.x-px,d.y-py)<pr+d.r){
         state.diamondsArr.splice(i,1);
-        diamonds+=1; localStorage.setItem('otd_diamonds',diamonds);
+        diamonds+=1; updateDiamondsUI();
         playDiamond(); showToast('+1 diamond');
       } else if(d.y-d.r>canvas.clientHeight+40){ state.diamondsArr.splice(i,1); }
     }
@@ -246,39 +292,14 @@ if (state.tiltControls) {
     draw();
   }
 
-  // ---- Tilt controls (with iOS permission + smoothing) ----
-let tiltX = 0; // smoothed gamma
-
-async function ensureMotionPermission() {
-  try {
-    if (typeof DeviceMotionEvent !== 'undefined' &&
-        typeof DeviceMotionEvent.requestPermission === 'function') {
-      const res = await DeviceMotionEvent.requestPermission();
-      return res === 'granted';
-    }
-    if (typeof DeviceOrientationEvent !== 'undefined' &&
-        typeof DeviceOrientationEvent.requestPermission === 'function') {
-      const res = await DeviceOrientationEvent.requestPermission();
-      return res === 'granted';
-    }
-  } catch (_) {}
-  return true;
-}
-
-window.addEventListener('deviceorientation', (e) => {
-  if (!state.tiltControls || !running) return;
-  if (typeof e.gamma === 'number') {
-    tiltX = 0.9 * tiltX + 0.1 * e.gamma;
-  }
-}, { passive: true });
-
+  // -------- Overlay, Settings, Shop wiring --------
   playBtn.addEventListener('click',()=>{ startGame(); lastTS=0; requestAnimationFrame(loop); });
   pauseBtn.addEventListener('click',()=>{ if(!running)return; paused=!paused; pauseBtn.textContent=paused?'▶︎':'⏸︎'; if(!paused){ lastTS=0; requestAnimationFrame(loop);} });
 
   settingsBtn.addEventListener('click',()=>settingsSheet.classList.add('show'));
   closeSettings.addEventListener('click',()=>settingsSheet.classList.remove('show'));
 
-  // New toggles for rainbow + tilt
+  // Settings toggles (rainbow + tilt)
   const rainbowToggle=document.createElement('label');
   rainbowToggle.className='toggle';
   rainbowToggle.innerHTML=`<input type="checkbox" id="rainbowToggle"><span>Rainbow Blocks</span>`;
@@ -290,27 +311,92 @@ window.addEventListener('deviceorientation', (e) => {
 
   const rainbowInput=rainbowToggle.querySelector('input');
   const tiltInput=tiltToggle.querySelector('input');
-  rainbowInput.checked=localStorage.getItem('otd_rainbow')==='1';
-  tiltInput.checked=localStorage.getItem('otd_tilt')==='1';
-  state.rainbowBlocks=rainbowInput.checked;
-  state.tiltControls=tiltInput.checked;
+  rainbowInput.checked=state.rainbowBlocks;
+  tiltInput.checked=state.tiltControls;
   rainbowInput.addEventListener('change',()=>{ state.rainbowBlocks=rainbowInput.checked; localStorage.setItem('otd_rainbow', rainbowInput.checked?'1':'0'); });
   tiltInput.addEventListener('change', async () => {
-  if (tiltInput.checked) {
-    const ok = await ensureMotionPermission();
-    if (!ok) {
-      tiltInput.checked = false;
+    if (tiltInput.checked) {
+      const ok = await ensureMotionPermission();
+      if (!ok) {
+        tiltInput.checked = false;
+        state.tiltControls = false;
+        localStorage.setItem('otd_tilt', '0');
+        showToast('Motion access blocked. Enable in Settings → Safari → Motion & Orientation Access.');
+        return;
+      }
+      state.tiltControls = true;
+    } else {
       state.tiltControls = false;
-      localStorage.setItem('otd_tilt', '0');
-      showToast('Motion access blocked. Enable in Settings → Safari → Motion & Orientation Access.');
-      return;
     }
-    state.tiltControls = true;
-  } else {
-    state.tiltControls = false;
-  }
-  localStorage.setItem('otd_tilt', tiltInput.checked ? '1' : '0');
-});
+    localStorage.setItem('otd_tilt', tiltInput.checked ? '1' : '0');
+  });
 
+  // ---- Shop logic ----
+  function saveSkins() {
+    localStorage.setItem('otd_skins', JSON.stringify(skins));
+    localStorage.setItem('otd_selectedSkin', selectedSkin);
+  }
+  function renderShop() {
+    if (!shopList) return;
+    if (shopDiamondCount) shopDiamondCount.textContent = diamonds;
+    shopList.innerHTML = '';
+    for (const item of shopItems) {
+      const owned = !!skins[item.id];
+      const selected = selectedSkin === item.id;
+
+      const row = document.createElement('div');
+      row.className = 'shop-row';
+      row.style.display='flex'; row.style.alignItems='center';
+      row.style.gap='10px'; row.style.margin='8px 0';
+
+      const swatch = document.createElement('div');
+      swatch.style.width='22px'; swatch.style.height='22px';
+      swatch.style.borderRadius='50%';
+      swatch.style.background=item.color;
+      row.appendChild(swatch);
+
+      const label = document.createElement('div');
+      label.style.flex='1';
+      label.textContent = `${item.name}${item.cost?` — ${item.cost}💎`:''}`;
+      row.appendChild(label);
+
+      const btn = document.createElement('button');
+      btn.className='btn';
+
+      if (!owned) {
+        btn.textContent = diamonds >= item.cost ? 'Buy' : 'Need 💎';
+        btn.disabled = diamonds < item.cost;
+        btn.addEventListener('click', ()=>{
+          if (diamonds < item.cost) return;
+          diamonds -= item.cost;
+          skins[item.id] = true;
+          selectedSkin = item.id;
+          updateDiamondsUI();
+          saveSkins();
+          renderShop();
+          showToast('Purchased!');
+        });
+      } else {
+        btn.textContent = selected ? 'Selected' : 'Select';
+        btn.disabled = selected;
+        btn.addEventListener('click', ()=>{
+          selectedSkin = item.id;
+          saveSkins();
+          renderShop();
+          showToast('Skin selected');
+        });
+      }
+
+      row.appendChild(btn);
+      shopList.appendChild(row);
+    }
+  }
+  function openShop(){ renderShop(); if (shopSheet) shopSheet.classList.add('show'); }
+  function closeShopSheet(){ if (shopSheet) shopSheet.classList.remove('show'); }
+  if (shopBtn)   shopBtn.addEventListener('click', openShop);
+  if (closeShop) closeShop.addEventListener('click', closeShopSheet);
+
+  // Init UI
+  updateDiamondsUI();
   draw();
 })();
