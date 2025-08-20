@@ -32,9 +32,9 @@
   // Shop catalog
   const shopItems = [
     { id: 'default', name: 'Default Blue', cost: 0,  color: '#7cc8ff' },
-    { id: 'red',     name: 'Red Ball',     cost: 10, color: '#ff4c4c' },
-    { id: 'green',   name: 'Green Ball',   cost: 10, color: '#4cff62' },
-    { id: 'gold',    name: 'Gold Ball',    cost: 20, color: '#ffd94c' }
+    { id: 'red',     name: 'Red Ball',     cost: 100, color: '#ff4c4c' },
+    { id: 'green',   name: 'Green Ball',   cost: 100, color: '#4cff62' },
+    { id: 'gold',    name: 'Gold Ball',    cost: 200, color: '#ffd94c' }
   ];
 
   // PWA SW
