@@ -13,6 +13,8 @@
 <body>
   <div id="ui">
     <div id="top-bar">
+      <!-- Diamond HUD -->
+      <div id="diamondsHud" class="hud-item">💎 <span id="diamondCount">0</span></div>
       <div id="score">0</div>
       <button id="pauseBtn" aria-label="Pause">⏸︎</button>
     </div>
@@ -27,8 +29,9 @@
         </div>
         <div class="buttons">
           <button id="playBtn">Play</button>
-          <button id="settingsBtn" class="ghost">Settings</button>
-        </div>
+          <button id="shopBtn" class="secondary">Shop</button>
+          <button id="settingsBtn" class="secondary">Settings</button>
+</div>
       </div>
     </div>
 
@@ -50,6 +53,18 @@
     <div id="toast"></div>
   </div>
 
+  <div id="shop" class="sheet">
+  <div class="sheet-inner">
+    <h2>Shop</h2>
+    <div class="shop-items">
+      <div class="shop-item" data-item="skin1">Skin 1 - 100💰</div>
+      <div class="shop-item" data-item="skin2">Skin 2 - 250💰</div>
+      <div class="shop-item" data-item="skin3">Skin 3 - 500💰</div>
+    </div>
+    <button id="closeShopBtn" class="secondary">Close</button>
+  </div>
+</div>
+  
   <script src="game.js"></script>
 </body>
 </html>
